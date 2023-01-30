@@ -31,7 +31,7 @@ type Function struct {
 	Stdin *os.File
 
 	// contains filtered or unexported fields
-	c  exec.Cmd
+	Command  exec.Cmd
 	fn reflect.Value
 }
 
@@ -44,15 +44,15 @@ type Function struct {
 // If no args are specified, args is set to []string{os.Args[0]}
 func NewFork(n string, fn interface{}, args ...string) (f *Function) {
 	f = &Function{}
-	f.c = exec.Cmd{}
+	f.Command = exec.Cmd{}
 	// os.Executable might not be the most robust way to do this, but it is portable.
-	f.c.Path, _ = os.Executable()
-	f.c.Args = args
-	f.c.Stderr = os.Stderr
-	f.c.Stdout = os.Stdout
-	f.c.Stdin = os.Stdin
+	f.Command.Path, _ = os.Executable()
+	f.Command.Args = args
+	f.Command.Stderr = os.Stderr
+	f.Command.Stdout = os.Stdout
+	f.Command.Stdin = os.Stdin
 	if len(args) == 0 {
-		f.c.Args = []string{os.Args[0]}
+		f.Command.Args = []string{os.Args[0]}
 	}
 	// we don't check for errors here, but it would be a pretty bad thing if this failed
 	//f.c.Args = func() []string { s, _ := ioutil.ReadFile("/proc/self/comm"); return []string{string(s)} }()
@@ -69,14 +69,14 @@ func (f *Function) Fork(args ...interface{}) (err error) {
 	if err = f.validateArgs(args...); err != nil {
 		return
 	}
-	f.c.Stderr = f.Stderr
-	f.c.Stdout = f.Stdout
-	f.c.Stdin = f.Stdin
-	f.c.SysProcAttr = f.SysProcAttr
-	f.c.Env = os.Environ()
-	f.c.Env = append(f.c.Env, nameVar+"="+f.Name)
+	f.Command.Stderr = f.Stderr
+	f.Command.Stdout = f.Stdout
+	f.Command.Stdin = f.Stdin
+	f.Command.SysProcAttr = f.SysProcAttr
+	f.Command.Env = os.Environ()
+	f.Command.Env = append(f.Command.Env, nameVar+"="+f.Name)
 	af, err := ioutil.TempFile("", "gofork_*")
-	f.c.Env = append(f.c.Env, argsVar+"="+af.Name())
+	f.Command.Env = append(f.Command.Env, argsVar+"="+af.Name())
 	if err != nil {
 		return
 	}
@@ -85,27 +85,27 @@ func (f *Function) Fork(args ...interface{}) (err error) {
 		enc.EncodeValue(reflect.ValueOf(iv))
 	}
 	af.Close()
-	if err = f.c.Start(); err != nil {
+	if err = f.Command.Start(); err != nil {
 		return
 	}
-	f.Process = f.c.Process
+	f.Process = f.Command.Process
 	return
 }
 
 // Combine NewFork and Fork with privious function configuration
 func (f *Function) ReFork(args ...interface{}) (err error) {
-	previous := f.c
-	f.c = exec.Cmd{}
-	f.c.Path, _ = os.Executable()
-	f.c.Args = previous.Args
-	f.c.Stderr = f.Stderr
-	f.c.Stdout = f.Stdout
-	f.c.Stdin = f.Stdin
-	f.c.SysProcAttr = f.SysProcAttr
-	f.c.Env = os.Environ()
-	f.c.Env = append(f.c.Env, nameVar+"="+f.Name)
+	previous := f.Command
+	f.Command = exec.Cmd{}
+	f.Command.Path, _ = os.Executable()
+	f.Command.Args = previous.Args
+	f.Command.Stderr = f.Stderr
+	f.Command.Stdout = f.Stdout
+	f.Command.Stdin = f.Stdin
+	f.Command.SysProcAttr = f.SysProcAttr
+	f.Command.Env = os.Environ()
+	f.Command.Env = append(f.Command.Env, nameVar+"="+f.Name)
 	af, err := ioutil.TempFile("", "gofork_*")
-	f.c.Env = append(f.c.Env, argsVar+"="+af.Name())
+	f.Command.Env = append(f.Command.Env, argsVar+"="+af.Name())
 	if err != nil {
 		return
 	}
@@ -114,19 +114,19 @@ func (f *Function) ReFork(args ...interface{}) (err error) {
 		enc.EncodeValue(reflect.ValueOf(iv))
 	}
 	af.Close()
-	if err = f.c.Start(); err != nil {
+	if err = f.Command.Start(); err != nil {
 		return
 	}
-	f.Process = f.c.Process
+	f.Process = f.Command.Process
 	return
 }
 
 // Wait provides a wrapper around exec.Cmd.Wait()
 func (f *Function) Wait() (err error) {
-	if err = f.c.Wait(); err != nil {
+	if err = f.Command.Wait(); err != nil {
 		return
 	}
-	f.ProcessState = f.c.ProcessState
+	f.ProcessState = f.Command.ProcessState
 	return
 }
 
